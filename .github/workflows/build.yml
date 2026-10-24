@@ -15,9 +15,17 @@ jobs:
       - name: Setup Developer Command Prompt
         uses: ilammy/msvc-dev-cmd@v1
 
+      - name: Download ScriptHookV SDK
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "http://www.dev-c.com/files/scripting/ScriptHookV_SDK_1.0.617.1.zip" -OutFile "sdk.zip" -UserAgent "Mozilla/5.0"
+          Expand-Archive -Path "sdk.zip" -DestinationPath "sdk_temp" -Force
+          Get-ChildItem -Path "sdk_temp" -Recurse -Filter "*.h" | Copy-Item -Destination "."
+          Get-ChildItem -Path "sdk_temp" -Recurse -Filter "*.lib" | Copy-Item -Destination "."
+
       - name: Build ASI
         run: |
-          cl /O2 /LD /EHsc main.cpp /Fe:NpcWar.asi user32.lib kernel32.lib
+          cl /O2 /LD /EHsc main.cpp /Fe:NpcWar.asi ScriptHookV.lib user32.lib kernel32.lib
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
