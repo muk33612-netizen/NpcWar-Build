@@ -1,28 +1,35 @@
 name: build-asi
-
-on:
-  workflow_dispatch:
-  push:
-
+on: [workflow_dispatch, push]
 jobs:
   build:
     runs-on: windows-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Developer Command Prompt
-        uses: ilammy/msvc-dev-cmd@v1
-
-      - name: Run build.bat
+      - uses: actions/checkout@v4
+      - name: Download ScriptHookV SDK
+        shell: pwsh
         run: |
-          cmd /c build.bat
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+          Invoke-WebRequest -Uri "http://www.dev-c.com/files/ScriptHookV_SDK_1.0.617.1a.zip" -OutFile sdk.zip
+          Expand-Archive sdk.zip -DestinationPath sdk_raw
+          New-Item -ItemType Directory -Force sdk/inc, sdk/lib | Out-Null
+          $nat = Get-ChildItem sdk_raw -Recurse -Filter natives.h | Select-Object -First 1
+          Copy-Item "$($nat.DirectoryName)\*.h" sdk/inc
+          $lib = Get-ChildItem sdk_raw -Recurse -Filter ScriptHookV.lib | Select-Object -First 1
+          Copy-Item $lib.FullName sdk/lib
+      - uses: ilammy/msvc-dev-cmd@v1
+        with: { arch: x64 }
+      - name: Build
+        shell: cmd
+        run: cl /nologo /LD /O2 /EHsc /std:c++17 /Isdk\inc main.cpp sdk\lib\ScriptHookV.lib user32.lib /Fe:NpcWar.dll
+      - name: Package
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse -Include *.dll,*.asi | Where-Object { $_.FullName -notmatch 'sdk' } | ForEach-Object { Write-Host $_.FullName }
+          New-Item -ItemType Directory -Force out | Out-Null
+          if (-not (Test-Path NpcWar.dll)) { throw "NpcWar.dll was not produced" }
+          Copy-Item NpcWar.dll out/NpcWar.asi
+          Copy-Item NpcWar.ini out/NpcWar.ini
+      - uses: actions/upload-artifact@v4
         with:
           name: NpcWar
-          path: |
-            NpcWar.asi
-            NpcWar.ini
+          path: out/*
+          if-no-files-found: error
