@@ -1,0 +1,28 @@
+name: build-asi
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build ASI
+        run: |
+          cl /O2 /LD /EHsc main.cpp /Fe:NpcWar.asi user32.lib kernel32.lib
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NpcWar
+          path: |
+            NpcWar.asi
+            NpcWar.ini
