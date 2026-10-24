@@ -5,15 +5,19 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download ScriptHookV SDK
+      - name: Unpack ScriptHookV SDK (zip uploaded in repo)
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri "http://www.dev-c.com/files/ScriptHookV_SDK_1.0.617.1a.zip" -OutFile sdk.zip
-          Expand-Archive sdk.zip -DestinationPath sdk_raw
+          $zip = Get-ChildItem -Path . -Filter "*.zip" -File | Where-Object { $_.Name -like "*SDK*" -or $_.Name -like "*ScriptHook*" } | Select-Object -First 1
+          if (-not $zip) { throw "No SDK zip found in repo root. Upload ScriptHookV_SDK_*.zip to the repo." }
+          Write-Host "Using $($zip.Name)"
+          Expand-Archive $zip.FullName -DestinationPath sdk_raw
           New-Item -ItemType Directory -Force sdk/inc, sdk/lib | Out-Null
           $nat = Get-ChildItem sdk_raw -Recurse -Filter natives.h | Select-Object -First 1
+          if (-not $nat) { throw "natives.h not found in the zip" }
           Copy-Item "$($nat.DirectoryName)\*.h" sdk/inc
           $lib = Get-ChildItem sdk_raw -Recurse -Filter ScriptHookV.lib | Select-Object -First 1
+          if (-not $lib) { throw "ScriptHookV.lib not found in the zip" }
           Copy-Item $lib.FullName sdk/lib
       - uses: ilammy/msvc-dev-cmd@v1
         with: { arch: x64 }
