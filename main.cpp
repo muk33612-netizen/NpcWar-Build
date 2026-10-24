@@ -3,6 +3,7 @@
 // revive corpses with R, carry corpses with Space.
 // Build: see README / build.bat (needs the ScriptHookV SDK headers + ScriptHookV.lib)
 
+#define NOMINMAX
 #include <windows.h>
 #include <vector>
 #include <random>
@@ -172,7 +173,7 @@ static void toughen(Ped p, int hp, int acc) {
     PED::SET_PED_CAN_RAGDOLL(p, FALSE);
     PED::SET_PED_CAN_RAGDOLL_FROM_PLAYER_IMPACT(p, FALSE);
     PED::SET_PED_SUFFERS_CRITICAL_HITS(p, FALSE);
-    PED::SET_PED_DROPS_WEAPONS_WHEN_DEAD(p, FALSE);
+    WEAPON::SET_PED_DROPS_WEAPONS_WHEN_DEAD(p, FALSE);
     PED::SET_PED_CAN_BE_KNOCKED_OFF_VEHICLE(p, 1);
     PED::SET_PED_COMBAT_ABILITY(p, 2);
     PED::SET_PED_COMBAT_MOVEMENT(p, 2);
@@ -216,8 +217,9 @@ static bool spawnNpc(int role) {
         if (!GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(x, y, pc.z + 50.f, &gz, FALSE)) continue;
         if (!PATHFIND::GET_SAFE_COORD_FOR_PED(x, y, gz, TRUE, &out, 16)) continue;
         if (role != R_BEGGAR && d < 70.f) {
-            float sx, sy;
-            if (GRAPHICS::GET_SCREEN_COORD_FROM_WORLD_COORD(out.x, out.y, out.z, &sx, &sy)) continue; // don't pop in view
+            Vector3 fw = ENTITY::GET_ENTITY_FORWARD_VECTOR(pp);       // don't pop in front of the player
+            float dx = out.x - pc.x, dy = out.y - pc.y, len = std::sqrt(dx * dx + dy * dy);
+            if (len > 0.01f && (dx * fw.x + dy * fw.y) / len > 0.3f) continue;
         }
         ok = true;
     }
